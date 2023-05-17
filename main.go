@@ -4,17 +4,19 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/afiifatuts/go-auth-jwt/auth"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 )
-
-var jwtKey = []byte("SECRET_KEY")
 
 type User struct {
 	Id       int    `json:"id"`
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+// var jwtKey = []byte("SECRET_KEY")
+var jwtKey = "SECRET_KEY"
 
 func main() {
 	//gin router
@@ -26,7 +28,7 @@ func main() {
 	userRouter := r.Group("api/v1/users")
 
 	//tambahkan middleware
-	userRouter.Use(authMidlleware())
+	userRouter.Use(auth.AuthMiddleware(jwtKey))
 
 	//setup get user profile routes
 	userRouter.GET("/:id/profile", profileHandler)
@@ -78,35 +80,4 @@ func profileHandler(c *gin.Context) {
 
 	//seharusnya response user dari db, tapi di contoh ini kita return usrname
 	c.JSON(http.StatusOK, gin.H{"username": username})
-}
-
-// midleware mereturn handlefunc
-func authMidlleware() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		tokenstr := ctx.GetHeader("Authorization")
-
-		//kalau tokennya kosong abort
-		if tokenstr == "" {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorize"})
-			ctx.Abort()
-			return
-		}
-
-		//kalau tokennya ada di parse kemudian return tokennya
-		// token str beda dengan token
-		token, err := jwt.Parse(tokenstr, func(t *jwt.Token) (any, error) { return jwtKey, nil })
-
-		//jika gagal validasi token atau ada error maka abort
-		if !token.Valid || err != nil {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorize"})
-			ctx.Abort()
-			return
-		}
-
-		//jika berhasil
-		claims := token.Claims.(jwt.MapClaims)
-		ctx.Set("claims", claims)
-
-		ctx.Next()
-	}
 }
